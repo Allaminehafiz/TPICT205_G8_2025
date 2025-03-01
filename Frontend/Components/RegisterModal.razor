@@ -1,0 +1,117 @@
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-user-plus"></i> Inscription</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+          <DataAnnotationsValidator />
+          <ValidationSummary />
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Rôle</label>
+            <InputSelect class="form-select" @bind-Value="registerModel.Role">
+              <option value="">-- Choisissez un rôle --</option>
+              <option value="Etudiant">Étudiant</option>
+              <option value="Administrateur">Administrateur</option>
+              <option value="Jury">Jury</option>
+            </InputSelect>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nom</label>
+            <InputText class="form-control" @bind-Value="registerModel.Nom" required />
+          </div>
+
+          @if (registerModel.Role == "Etudiant")
+          {
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Matricule</label>
+                  <InputText class="form-control" @bind-Value="registerModel.Matricule" required />
+              </div>
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Niveau</label>
+                  <InputSelect class="form-select" @bind-Value="registerModel.Niveau">
+                      <option value="L1">L1</option>
+                      <option value="L2">L2</option>
+                      <option value="L3">L3</option>
+                  </InputSelect>
+              </div>
+              @if (registerModel.Niveau != "L1" && registerModel.Niveau != null)
+              {
+                  <div class="mb-3">
+                      <label class="form-label fw-bold">Spécialité</label>
+                      <InputSelect class="form-select" @bind-Value="registerModel.Specialite">
+                          <option value="sécurité">Sécurité</option>
+                          <option value="réseau">Réseau</option>
+                          <option value="génie logiciel">Génie Logiciel</option>
+                      </InputSelect>
+                  </div>
+              }
+          }
+          else if (registerModel.Role == "Administrateur" || registerModel.Role == "Jury")
+          {
+              <div class="mb-3">
+                  <label class="form-label fw-bold">Email</label>
+                  <InputText class="form-control" @bind-Value="registerModel.Email" type="email" required />
+              </div>
+              @if (registerModel.Role == "Jury")
+              {
+                  <div class="mb-3">
+                      <label class="form-label fw-bold">Niveau attribué</label>
+                      <InputSelect class="form-select" @bind-Value="registerModel.Niveau">
+                          <option value="L2">L2</option>
+                          <option value="L3">L3</option>
+                      </InputSelect>
+                  </div>
+              }
+          }
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nom d'utilisateur</label>
+            <InputText class="form-control" @bind-Value="registerModel.Username" required />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Mot de passe</label>
+            <InputText class="form-control" @bind-Value="registerModel.Password" type="password" required />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100"><i class="fas fa-user-plus"></i> S'inscrire</button>
+        </EditForm>
+      </div>
+    </div>
+  </div>
+</div>
+
+@code {
+   private RegisterModel registerModel = new RegisterModel();
+   private async Task HandleRegister()
+{
+    var response = await Http.PostAsJsonAsync("auth/register", registerModel);
+    if (response.IsSuccessStatusCode)
+    {
+        await Js.InvokeVoidAsync("bootstrap.Modal.getInstance", "#registerModal", "hide");
+        await Js.InvokeVoidAsync("bootstrap.Modal.getInstance", "#loginModal", "show");
+    }
+}
+
+
+    public class RegisterModel
+    {
+        public string Nom { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+        public string Matricule { get; set; } = string.Empty;
+        public string Niveau { get; set; } = string.Empty;
+        public string Specialite { get; set; } = string.Empty;
+    }
+}

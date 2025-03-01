@@ -1,0 +1,84 @@
+@using Frontend.Services
+@inject ApiService ApiService
+@page "/student-profile"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2 class="text-center mt-4">Profil Étudiant</h2>
+
+@if (student != null)
+{
+    <div class="container mt-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title text-primary">@student.Nom (@student.Matricule)</h4>
+                <p><strong>Niveau :</strong> @student.Niveau</p>
+                <p><strong>Spécialité :</strong> @(string.IsNullOrEmpty(student.Specialite) ? "Aucune" : student.Specialite)</p>
+                <p><strong>MGP :</strong> <span class="badge bg-info">@student.MGP.ToString("F2")</span></p>
+                <p><strong>Statut :</strong> <span class="badge bg-@(student.StatutDeliberation == "admis" ? "success" : "danger")">@student.StatutDeliberation</span></p>
+            </div>
+        </div>
+
+        <h3 class="mt-4">Mes Notes</h3>
+        <table class="table table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Unité</th>
+                    <th>Semestre</th>
+                    <th>Type</th>
+                    <th>Note Initiale</th>
+                    <th>Points Ajoutés</th>
+                    <th>Note Finale</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var note in student.Notes)
+                {
+                    <tr>
+                        <td>@note.UnitCode</td>
+                        <td>@(note.Semester == 1 ? "S1" : "S2")</td>
+                        <td>@note.Type</td>
+                        <td>@note.InitialNote</td>
+                        <td>@(note.PointsAdded == 0 ? "-" : note.PointsAdded.ToString("F2"))</td>
+                        <td>@note.FinalNote.ToString("F2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p class="text-center text-muted">Chargement des informations...</p>
+}
+
+@inject ApiService ApiService
+@code {
+    private StudentProfileData? student = null; <!-- Rend nullable pour éviter les erreurs -->
+
+    protected override async Task OnInitializedAsync()
+    {
+        student = await Http.GetFromJsonAsync<StudentProfileData>("student/profile/1"); // Remplace "1" par l'ID utilisateur stocké après connexion.
+    }
+
+    public class StudentProfileData
+    {
+        public string Nom { get; set; } = "";
+        public string Matricule { get; set; } = "";
+        public string Niveau { get; set; } = "";
+        public string Specialite { get; set; } = "";
+        public decimal MGP { get; set; }
+        public string StatutDeliberation { get; set; } = "";
+        public List<StudentNoteDto> Notes { get; set; } = new List<StudentNoteDto>(); <!-- Initialisation -->
+    }
+
+    public class StudentNoteDto
+    {
+        public string UnitCode { get; set; } = "";
+        public int Semester { get; set; }
+        public string Type { get; set; } = "";
+        public decimal InitialNote { get; set; }
+        public decimal PointsAdded { get; set; }
+        public decimal FinalNote { get; set; }
+    }
+}

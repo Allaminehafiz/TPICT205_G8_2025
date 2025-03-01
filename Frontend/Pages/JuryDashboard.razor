@@ -1,0 +1,142 @@
+@using Frontend.Services
+@inject ApiService ApiService
+@page "/jury-dashboard"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<h2 class="text-center mt-4">Tableau de Bord du Jury</h2>
+
+@if (students.Count > 0) 
+{
+    <div class="container mt-4">
+        <h4>Liste des étudiants du niveau @juryNiveau</h4>
+
+        <table class="table table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Matricule</th>
+                    <th>Nom</th>
+                    <th>MGP</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var student in students)
+                {
+                    <tr>
+                        <td>@student.Matricule</td>
+                        <td>@student.Nom</td>
+                        <td>@student.MGP.ToString("F2")</td>
+                        <td>
+                            <span class="badge bg-@(student.StatutDeliberation == "admis" ? "success" : "danger")">
+                                @student.StatutDeliberation
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-primary btn-sm" @onclick="() => SelectStudent(student)">
+                                Modifier Notes
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (selectedStudent != null)
+    {
+        <h3 class="mt-4">Ajouter des Points - @selectedStudent.Nom</h3>
+
+        <table class="table table-bordered">
+            <thead class="table-dark">
+                <tr>
+                    <th>Unité</th>
+                    <th>Semestre</th>
+                    <th>Note Actuelle</th>
+                    <th>Ajouter Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var note in selectedStudent.Notes ?? new List<StudentNoteDto>())
+                {
+                    <tr>
+                        <td>@note.UnitCode</td>
+                        <td>@(note.Semester == 1 ? "S1" : "S2")</td>
+                        <td>@note.FinalNote.ToString("F2")</td>
+                        <td>
+                            <InputNumber class="form-control" @bind-Value="note.PointsAdded" />
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <button class="btn btn-success" @onclick="SubmitAdjustments">Enregistrer Ajustements</button>
+    }
+}
+else
+{
+    <p class="text-center text-muted">Aucun étudiant trouvé pour ce niveau.</p>
+}
+
+@inject ApiService ApiService
+@code {
+    private string juryNiveau = "L1"; // À récupérer dynamiquement après connexion
+    private List<StudentProfileData> students = new(); // Initialisation
+    private StudentProfileData? selectedStudent = null; // Autoriser null
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await Http.GetFromJsonAsync<List<StudentProfileData>>($"jury/students/{juryNiveau}");
+        students = response ?? new List<StudentProfileData>(); // Éviter null
+    }
+
+    private void SelectStudent(StudentProfileData student)
+    {
+        selectedStudent = student ?? new StudentProfileData(); // Éviter null
+    }
+
+    private async Task SubmitAdjustments()
+    {
+        if (selectedStudent == null) return; // Évite le null exception
+
+        var adjustments = selectedStudent.Notes?
+            .Where(n => n.PointsAdded > 0)
+            .Select(n => new JuryAdjustmentDto
+            {
+                UnitId = n.UnitId,
+                PointsToAdd = n.PointsAdded
+            }).ToList() ?? new List<JuryAdjustmentDto>(); // Éviter null
+
+        if (adjustments.Any())
+        {
+            await Http.PostAsJsonAsync("jury/add-adjustments", new { Niveau = juryNiveau, Adjustments = adjustments });
+            Navigation.NavigateTo("/jury-dashboard", forceLoad: true); // Recharger la page après l'ajout
+        }
+    }
+
+    public class StudentProfileData
+    {
+        public string Matricule { get; set; } = "";
+        public string Nom { get; set; } = "";
+        public decimal MGP { get; set; } = 0;
+        public string StatutDeliberation { get; set; } = "";
+        public List<StudentNoteDto> Notes { get; set; } = new List<StudentNoteDto>(); // Éviter null
+    }
+
+    public class StudentNoteDto
+    {
+        public int UnitId { get; set; }
+        public string UnitCode { get; set; } = "";
+        public int Semester { get; set; }
+        public decimal FinalNote { get; set; } = 0;
+        public decimal PointsAdded { get; set; } = 0;
+    }
+
+    public class JuryAdjustmentDto
+    {
+        public int UnitId { get; set; }
+        public decimal PointsToAdd { get; set; }
+    }
+}

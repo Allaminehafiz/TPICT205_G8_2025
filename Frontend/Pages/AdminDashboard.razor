@@ -1,0 +1,74 @@
+@page "/admin-dashboard"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<h2 class="text-center mt-4">Tableau de Bord Administrateur</h2>
+
+<div class="container mt-4">
+    <h3>Saisir les Notes des Étudiants</h3>
+    <div class="mb-3">
+        <label class="form-label">Matricule de l'Étudiant</label>
+        <InputText class="form-control" @bind-Value="matricule" />
+    </div>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Unité</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var note in studentNotes)
+            {
+                <tr>
+                    <td>@note.UnitCode</td>
+                    <td>
+                        <InputNumber class="form-control" @bind-Value="note.Note" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-primary" @onclick="SubmitNotes">Enregistrer Notes</button>
+
+    <h3 class="mt-4">Télécharger le PV</h3>
+    <div class="mb-3">
+        <label class="form-label">Sélectionner un Niveau</label>
+        <InputSelect class="form-select" @bind-Value="niveauSelectionne">
+            <option value="L1">L1</option>
+            <option value="L2">L2</option>
+            <option value="L3">L3</option>
+        </InputSelect>
+    </div>
+    <button class="btn btn-success" @onclick="DownloadPV">Télécharger PV</button>
+</div>
+
+@code {
+    private string matricule = ""; <!-- Initialisation -->
+    private string niveauSelectionne = ""; <!-- Initialisation -->
+    private List<StudentNoteDto> studentNotes = new();
+
+    private async Task SubmitNotes()
+    {
+        await Http.PostAsJsonAsync("admin/update-notes", new { Matricule = matricule, Notes = studentNotes });
+    }
+
+    private async Task DownloadPV()
+    {
+        var file = await Http.GetByteArrayAsync($"admin/download-pv/{niveauSelectionne}");
+        var fileName = $"PV_Niveau_{niveauSelectionne}.csv";
+
+        var fileStream = new MemoryStream(file);
+        using var streamRef = new DotNetStreamReference(fileStream);
+        await Js.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+
+    public class StudentNoteDto
+    {
+        public string UnitCode { get; set; } = ""; <!-- Initialisation -->
+        public decimal Note { get; set; }
+    }
+}
